@@ -84,9 +84,26 @@ const HomeScreen = () => {
 
   const addTodo = async () => {
     if (todoInput.trim() === "") return;
-    if (dueDateInput && !/^\d{4}-\d{2}-\d{2}$/.test(dueDateInput)) {
-      Alert.alert("Invalid Date", "Please enter date in YYYY-MM-DD format");
-      return;
+    
+    if (dueDateInput) {
+      // Validate date format
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dueDateInput)) {
+        Alert.alert("Invalid Date", "Please enter date in YYYY-MM-DD format");
+        return;
+      }
+      
+      // Validate date values
+      const [year, month, day] = dueDateInput.split('-').map(Number);
+      const date = new Date(year, month - 1, day);
+      if (
+        date.getFullYear() !== year ||
+        date.getMonth() !== month - 1 ||
+        date.getDate() !== day ||
+        date < new Date(new Date().setHours(0, 0, 0, 0))
+      ) {
+        Alert.alert("Invalid Date", "Please enter a valid future date");
+        return;
+      }
     }
 
     try {
@@ -180,7 +197,7 @@ const HomeScreen = () => {
 
   const renderTodoItem = ({ item, index }) => (
     <Animated.View style={[styles.todoItem, { 
-      backgroundColor: isDarkMode ? '#2c3e50' : '#fff',
+      backgroundColor: isDarkMode ? '#333333' : '#ffffff',
       opacity: item.completed ? 0.8 : 1
     }]}>
       <TouchableOpacity
@@ -225,9 +242,13 @@ const HomeScreen = () => {
   );
 
   return (
-    <View style={[styles.container, SafeViewAndroid.AndroidSafeArea]}>
-      <View style={styles.header}>
-        <Text style={styles.title}>My Todos</Text>
+    <View style={[
+      styles.container,
+      SafeViewAndroid.AndroidSafeArea,
+      isDarkMode && styles.darkTheme
+    ]}>
+      <View style={[styles.header, isDarkMode && styles.darkHeader]}>
+        <Text style={[styles.title, isDarkMode && styles.darkThemeText]}>My Todos</Text>
         <View style={styles.headerRight}>
           <Switch
             value={isDarkMode}
@@ -244,12 +265,14 @@ const HomeScreen = () => {
         </View>
       </View>
 
-      <Animated.View style={[styles.inputContainer, {
-        transform: [{ translateY: slideAnimation }]
-      }]}>
+      <Animated.View style={[
+        styles.inputContainer,
+        isDarkMode && styles.darkInputContainer,
+        { transform: [{ translateY: slideAnimation }] }
+      ]}>
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.input}
+            style={[styles.input, isDarkMode && styles.darkThemeInput]}
             value={todoInput}
             onChangeText={setTodoInput}
             placeholder="Add a new task..."
@@ -263,23 +286,43 @@ const HomeScreen = () => {
           </TouchableOpacity>
         </View>
         <View style={styles.inputOptions}>
-          <TextInput
-            style={styles.dateInput}
-            value={dueDateInput}
-            onChangeText={setDueDateInput}
-            placeholder="Due Date (YYYY-MM-DD)"
-            placeholderTextColor="#adb5bd"
-            returnKeyType="done"
-            keyboardType="numbers-and-punctuation"
-          />
+          <View style={[styles.dateInputContainer, isDarkMode && { backgroundColor: '#2d2d2d', borderColor: '#404040' }]}>
+            <Feather name="calendar" size={16} color={isDarkMode ? "#fff" : "#666"} style={styles.calendarIcon} />
+            <TextInput
+              style={[styles.dateInput, isDarkMode && styles.darkDateInput]}
+              value={dueDateInput}
+              onChangeText={(text) => {
+                // Format the date as user types
+                text = text.replace(/\D/g, ''); // Remove non-digits
+                if (text.length > 8) text = text.slice(0, 8);
+                // Add dashes as user types
+                if (text.length >= 4) text = text.slice(0, 4) + '-' + text.slice(4);
+                if (text.length >= 7) text = text.slice(0, 7) + '-' + text.slice(7);
+                setDueDateInput(text);
+              }}
+              placeholder="YYYY-MM-DD"
+              placeholderTextColor="#adb5bd"
+              returnKeyType="done"
+              keyboardType="number-pad"
+              maxLength={10}
+            />
+          </View>
           <View style={styles.priorityButtons}>
             {["low", "medium", "high"].map((p) => (
               <TouchableOpacity
                 key={p}
-                style={[styles.priorityButton, priority === p && styles.priorityButtonActive]}
+                style={[
+                  styles.priorityButton,
+                  isDarkMode && styles.darkPriorityButton,
+                  priority === p && styles.priorityButtonActive
+                ]}
                 onPress={() => setPriority(p)}
               >
-                <Text style={[styles.priorityButtonText, priority === p && styles.priorityButtonTextActive]}>
+                <Text style={[
+                  styles.priorityButtonText,
+                  isDarkMode && styles.darkPriorityButtonText,
+                  priority === p && styles.priorityButtonTextActive
+                ]}>
                   {p.charAt(0).toUpperCase() + p.slice(1)}
                 </Text>
               </TouchableOpacity>
@@ -288,14 +331,22 @@ const HomeScreen = () => {
         </View>
       </Animated.View>
 
-      <View style={styles.filterTabs}>
+      <View style={[styles.filterTabs, isDarkMode && { backgroundColor: '#1a1a1a' }]}>
         {["all", "active", "completed", "priority"].map((f) => (
           <TouchableOpacity
             key={f}
-            style={[styles.filterTab, filter === f && styles.filterTabActive]}
+            style={[
+              styles.filterTab,
+              isDarkMode && styles.darkFilterTab,
+              filter === f && styles.filterTabActive
+            ]}
             onPress={() => setFilter(f)}
           >
-            <Text style={[styles.filterTabText, filter === f && styles.filterTabTextActive]}>
+            <Text style={[
+              styles.filterTabText,
+              isDarkMode && styles.darkFilterTabText,
+              filter === f && styles.filterTabTextActive
+            ]}>
               {f.charAt(0).toUpperCase() + f.slice(1)}
             </Text>
           </TouchableOpacity>
@@ -324,14 +375,32 @@ const HomeScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
-    padding: getResponsivePadding(),
+    backgroundColor: "#F8FAFC",
+    padding: 16,
     paddingTop: Platform.OS === 'ios' ? 40 : StatusBar.currentHeight + 10,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: normalize(8),
+    gap: 12,
   },
   inputRow: {
     flexDirection: 'row',
@@ -362,72 +431,61 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: normalize(20),
-    backgroundColor: "#ffffff",
-    padding: normalize(16),
-    borderRadius: normalize(16),
-    shadowColor: "#000000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
   },
   title: {
-    fontSize: normalize(24),
-    fontWeight: "700",
-    color: "#333333",
-    letterSpacing: 0.5,
-    textTransform: "none",
+    fontSize: 24,
+    fontWeight: "600",
+    color: "#000000",
   },
   inputContainer: {
     flexDirection: "column",
-    marginBottom: normalize(20),
-    backgroundColor: "#ffffff",
-    padding: normalize(16),
-    borderRadius: normalize(16),
-    shadowColor: "#000",
+    marginBottom: normalize(16),
+    width: '100%',
+    gap: normalize(8),
+    padding: SCREEN_WIDTH < 380 ? normalize(12) : normalize(16),
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    shadowColor: "#2563EB",
     shadowOffset: {
       width: 0,
-      height: 6,
+      height: 4,
     },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
-    width: '100%',
+    elevation: 5,
   },
   input: {
     flex: 1,
-    minHeight: normalize(50),
-    borderWidth: 1,
-    borderColor: "#cccccc",
-    borderRadius: normalize(12),
-    paddingHorizontal: normalize(16),
-    marginRight: normalize(12),
-    backgroundColor: "#ffffff",
-    fontSize: normalize(16),
-    color: "#333333",
+    height: 50,
+    borderWidth: 2,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginRight: 8,
+    backgroundColor: "#F8FAFC",
+    fontSize: 16,
+    color: "#1E293B",
+    fontWeight: '500',
   },
   addButton: {
-    backgroundColor: "#007bff",
+    backgroundColor: "#2563EB",
     paddingHorizontal: normalize(16),
     justifyContent: "center",
     alignItems: "center",
     borderRadius: normalize(12),
     height: normalize(50),
     minWidth: normalize(50),
-    shadowColor: "#000000",
+    shadowColor: "#2563EB",
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 3,
   },
@@ -443,11 +501,14 @@ const styles = StyleSheet.create({
   todoItem: {
     flexDirection: "row",
     alignItems: "center",
-    padding: normalize(16),
+    padding: 16,
     backgroundColor: "#ffffff",
-    borderRadius: normalize(16),
-    marginBottom: normalize(12),
-    shadowColor: "#000000",
+    borderRadius: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    width: '100%',
+    shadowColor: "#0F172A",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -455,22 +516,18 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    borderWidth: 1,
-    borderColor: "#e0e0e0",
-    flexWrap: 'nowrap',
-    width: '100%',
     transform: [{ scale: 1 }],
   },
   todoCheckbox: {
-    width: normalize(26),
-    height: normalize(26),
+    width: 24,
+    height: 24,
     borderWidth: 2,
-    borderColor: "#007bff",
-    borderRadius: normalize(13),
-    marginRight: normalize(12),
+    borderColor: "#2563EB",
+    borderRadius: 8,
+    marginRight: 16,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F8FAFC",
   },
   checkmark: {
     color: "#0066ff",
@@ -497,16 +554,16 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
   signOutButton: {
-    backgroundColor: "#34495e",
+    backgroundColor: "#334155",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 6,
-    shadowColor: "#000",
+    shadowColor: "#0F172A",
     shadowOffset: {
       width: 0,
       height: 1,
     },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.15,
     shadowRadius: 2,
     elevation: 2,
   },
@@ -523,8 +580,10 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: normalize(10),
     borderRadius: normalize(12),
-    backgroundColor: '#f5f7fa',
-    shadowColor: "#000",
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: "#0F172A",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -535,38 +594,39 @@ const styles = StyleSheet.create({
     marginLeft: normalize(8),
   },
   filterTabs: {
+    marginBottom: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: normalize(8),
     flexDirection: 'row',
-    marginBottom: normalize(16),
     flexWrap: 'wrap',
-    gap: normalize(10),
-    justifyContent: 'center',
-    paddingHorizontal: normalize(4),
+    justifyContent: 'space-between',
+    gap: normalize(8),
   },
   filterTab: {
-    paddingVertical: normalize(10),
-    paddingHorizontal: normalize(16),
-    borderRadius: normalize(20),
-    backgroundColor: '#fff',
-    minWidth: normalize(90),
+    paddingVertical: normalize(8),
+    paddingHorizontal: normalize(12),
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    width: SCREEN_WIDTH < 380 ? '48%' : 'auto',
     alignItems: 'center',
-    shadowColor: "#000",
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: "#0F172A",
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 1,
     },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: 2,
     elevation: 2,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.04)",
+    marginBottom: normalize(4),
   },
   filterTabActive: {
-    backgroundColor: '#0066ff',
-    shadowColor: "#0066ff",
+    backgroundColor: '#2563EB',
+    borderColor: '#1E40AF',
+    shadowColor: "#2563EB",
     shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
-    borderColor: "transparent",
   },
   filterTabText: {
     color: '#4a5568',
@@ -578,35 +638,32 @@ const styles = StyleSheet.create({
   },
   priorityButtons: {
     flexDirection: 'row',
-    gap: normalize(8),
+    gap: normalize(4),
+    flexWrap: 'wrap',
+    flex: SCREEN_WIDTH < 380 ? 1 : undefined,
+    justifyContent: SCREEN_WIDTH < 380 ? 'space-between' : 'flex-start',
   },
   priorityButton: {
-    paddingVertical: normalize(8),
-    paddingHorizontal: normalize(14),
-    borderRadius: normalize(20),
-    backgroundColor: '#f5f7fa',
+    paddingVertical: 6,
+    paddingHorizontal: normalize(8),
+    borderRadius: 4,
+    backgroundColor: '#f5f5f5',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.04)',
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    borderColor: '#e1e1e1',
+    minWidth: SCREEN_WIDTH < 380 ? '30%' : undefined,
+    alignItems: 'center',
   },
   priorityButtonActive: {
-    backgroundColor: '#0066ff',
-    borderColor: 'transparent',
+    backgroundColor: '#666666',
+    borderColor: '#666666',
   },
   priorityButtonText: {
-    fontSize: normalize(13),
-    fontWeight: '600',
-    color: '#4a5568',
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#666666',
   },
   priorityButtonTextActive: {
-    color: '#fff',
+    color: '#ffffff',
   },
   inputOptions: {
     flexDirection: 'row',
@@ -636,16 +693,16 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   prioritylow: {
-    backgroundColor: '#f0f9f0',
-    borderColor: '#28a745',
+    backgroundColor: '#E5F0EA',
+    borderColor: '#047857',
   },
   prioritymedium: {
-    backgroundColor: '#fff9f0',
-    borderColor: '#ffa000',
+    backgroundColor: '#FEF3C7',
+    borderColor: '#B45309',
   },
   priorityhigh: {
-    backgroundColor: '#fff0f0',
-    borderColor: '#dc3545',
+    backgroundColor: '#FEE2E2',
+    borderColor: '#B91C1C',
   },
   todoCheckboxChecked: {
     backgroundColor: '#007bff',
@@ -667,27 +724,63 @@ const styles = StyleSheet.create({
   // Theme styles
   darkTheme: {
     backgroundColor: '#1a1a1a',
-    color: '#fff',
+  },
+  darkHeader: {
+    backgroundColor: '#2d2d2d',
+    borderColor: '#404040',
+  },
+  darkInputContainer: {
+    backgroundColor: '#2d2d2d',
+    borderColor: '#404040',
   },
   darkThemeText: {
     color: '#fff',
   },
   darkThemeInput: {
-    backgroundColor: '#2d2d2d',
+    backgroundColor: '#333333',
     color: '#fff',
     borderColor: '#404040',
   },
-  dateInput: {
-    height: normalize(50),
-    borderWidth: 1.5,
+  darkFilterTab: {
+    backgroundColor: '#2d2d2d',
+    borderColor: '#404040',
+  },
+  darkFilterTabText: {
+    color: '#fff',
+  },
+  darkPriorityButton: {
+    backgroundColor: '#333333',
+    borderColor: '#404040',
+  },
+  darkPriorityButtonText: {
+    color: '#fff',
+  },
+  darkDateInput: {
+    backgroundColor: '#333333',
+    color: '#fff',
+    borderColor: '#404040',
+  },
+  dateInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: normalize(44),
+    borderWidth: 1,
     borderColor: "#e1e4e8",
-    borderRadius: normalize(12),
-    paddingHorizontal: normalize(16),
-    marginRight: normalize(12),
-    width: '40%',
+    borderRadius: 8,
+    paddingHorizontal: 12,
     backgroundColor: "#fff",
-    fontSize: normalize(14),
+    width: SCREEN_WIDTH < 380 ? '100%' : '40%',
+    marginBottom: SCREEN_WIDTH < 380 ? 8 : 0,
+  },
+  calendarIcon: {
+    marginRight: 8,
+  },
+  dateInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
     color: "#1a1a1a",
+    padding: 0,
   },
   inputOptions: {
     flexDirection: 'row',
